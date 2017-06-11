@@ -6,6 +6,7 @@ module Handler.Search
 
 import Import
 import Data.Trie (elems, submap)
+import qualified Data.Text as T
 import Data.Version (showVersion)
 import qualified Web.Bower.PackageMeta as Bower
 
@@ -94,10 +95,19 @@ searchForType ty = do
     db <- atomically . readTVar =<< (appDatabase <$> getYesod)
     return (map fst (take 50 (sortBy (comparing snd) (mapMaybe (matches ty) (concat (elems db))))))
   where
-    matches :: P.Type -> (a, Maybe P.Type) -> Maybe (a, Int)
-    matches ty1 (a, Just ty2) = do
+    matches :: P.Type -> (SearchResult, Maybe P.Type) -> Maybe (SearchResult, Int)
+    matches ty1 (sr, Just ty2) = do
       score <- compareTypes ty1 ty2
-      return (a, score)
+      return (sr, score - preludeBonus + lengthPenalty)
+      where
+        preludeBonus = case sr of
+          SearchResult{..} | "prelude" `T.isInfixOf` (Bower.runPackageName hrPkgName) -> 1
+          _ -> 0
+        lengthPenalty = abs $ (lengthish ty1) - (lengthish ty2)
+        lengthish ty' = case ty' of
+          P.ForAll _ ty'' _ -> lengthish ty''
+          P.ConstrainedType _ ty'' -> lengthish ty''
+          ty'' -> length (show ty'')
     matches _ _ = Nothing
 
     -- This is an approximation to type subsumption / unification.

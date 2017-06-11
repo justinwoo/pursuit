@@ -107,21 +107,25 @@ createDatabase = do
                , ( SearchResult (bowerName pkgMeta)
                                 pkgVersion
                                 (fromMaybe "" declComments)
-                                (DeclarationResult ns (P.runModuleName modName) declTitle (fmap (outputWith renderText . renderType) ty))
+                                (DeclarationResult ns (P.runModuleName modName) declTitle (fmap renderType' ty))
                  , ty
                  )
                )
         declEntry : do
           D.ChildDeclaration{..} <- declChildren
+          let ty' = case cdeclInfo of
+                        D.ChildTypeClassMember x -> Just x
+                        _ -> Nothing
           return ( fromText (T.toLower cdeclTitle)
                  , ( SearchResult (bowerName pkgMeta)
                                   pkgVersion
                                   (fromMaybe "" cdeclComments)
-                                  (DeclarationResult ValueLevel (P.runModuleName modName) cdeclTitle Nothing)
-                   , Nothing
+                                  (DeclarationResult ValueLevel (P.runModuleName modName) cdeclTitle (fmap renderType' ty'))
+                   , ty'
                    )
                  )
   where
+    renderType' = outputWith renderText . renderType
     fromListWithDuplicates :: [(ByteString, a)] -> Trie.Trie [a]
     fromListWithDuplicates = foldr (\(k, a) -> Trie.alterBy (\_ xs -> Just . maybe xs (xs <>)) k [a]) Trie.empty
 
