@@ -22,7 +22,7 @@ import qualified Language.PureScript as P
 import qualified XMLArrows
 import SearchIndex
   (SearchResult(..), SearchResultSource(..), SearchResultInfo(..), SearchIndex,
-   searchForName, searchForType)
+   searchForName, searchForType, searchForInstances)
 
 resultsPerPage :: Int
 resultsPerPage = 50
@@ -255,6 +255,7 @@ searchSources =
   map conv
     [ searchForName
     , searchForType
+    , searchForInstances
     ]
   where
   conv :: (Text -> SearchIndex -> [(SearchResult, Int)]) ->

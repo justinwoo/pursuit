@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module SearchIndex
   ( SearchResult(..)
   , SearchResultSource(..)
@@ -9,9 +11,11 @@ module SearchIndex
   , evalSearchIndex
   , searchForName
   , searchForType
+  , searchForInstances
   , compareTypes
   , typeComplexity
   , parseType
+  , parseInstance
   , isSymbol
   ) where
 
@@ -320,6 +324,31 @@ searchForName query =
     >>> map convert
     >>> concat
     >>> sortEntries
+
+-- | Search the index for instances of a type class. The query is expected
+-- to be prefixed with "instances: ", and then the type class to be searched for.
+searchForInstances :: Text -> SearchIndex -> [(SearchResult, Int)]
+searchForInstances query =
+  case parseInstance query of
+    Just _ ->
+      unSearchIndex
+      >>> Trie.toList
+      >>> map convert
+      >>> concat
+    _ ->
+      const []
+  where
+    convert (key, entries) =
+      -- note that, because we are using a trie here, all the results are at
+      -- least as long as the query; we use the difference in length as the
+      -- score.
+      map (\IndexEntry {entryResult} ->
+        ( entryResult
+        , T.length (decodeUtf8 key) - T.length query
+        )) entries
+
+parseInstance :: Text -> Maybe Text
+parseInstance = stripPrefix "instances: "
 
 -- | Search the index by type. If the query does not parse as a type, or is a
 -- "simple type", i.e. just a single type constructor or type variable, return
